@@ -78,10 +78,27 @@ def analyze_stock_tech(ts_code: str, name: str = "") -> Dict[str, Any]:
         "error": None,
     }
 
-    # ── 1. 东方财富 K线 + 指标 ──
+    # ── 1. K线 + 指标（东方财富优先，国外服务器回退到 Tushare）──
     try:
         spider = EastmoneySpider()
         df = spider.get_stock_kline(pure_code, days=120)
+
+        # 回退：Streamlit Cloud 等国外服务器常被东方财富拒绝 IP
+        if df.empty or len(df) < 30:
+            import tushare as ts
+            from datetime import datetime, timedelta
+            from config import TUSHARE_TOKEN
+            pro = ts.pro_api(TUSHARE_TOKEN)
+            end_date = datetime.now().strftime('%Y%m%d')
+            start_date = (datetime.now() - timedelta(days=180)).strftime('%Y%m%d')
+            df_ts = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+            if df_ts is not None and not df_ts.empty and len(df_ts) >= 30:
+                df_ts = df_ts.sort_values('trade_date').reset_index(drop=True)
+                df_ts = df_ts.rename(columns={'trade_date': 'date', 'vol': 'volume'})
+                if 'amount' in df_ts.columns:
+                    df_ts['amount'] = df_ts['amount'] * 1000
+                df = df_ts
+
         if not df.empty and len(df) >= 30:
             kdj = calculate_kdj(df)
             macd = calculate_macd(df)
