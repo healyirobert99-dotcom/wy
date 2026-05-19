@@ -1059,10 +1059,10 @@ with tabs[1]:
             price = quote.get("price", 0)
             change_pct = quote.get("change_pct", 0)
 
-            if data.get("error") and not quote:
-                st.error(f"分析失败: {data['error']}")
-            else:
-                # ── 头部：名称+评级 ──
+            if data.get("error"):
+                st.warning(f"⚠️ {data['error']}")
+
+            # ── 头部：名称+评级 ──
                 h1, h2 = st.columns([3, 1])
                 with h1:
                     st.markdown(f"**{name}** `{ts_code}`")
@@ -1103,6 +1103,8 @@ with tabs[1]:
 
                 # ── 技术指标卡片 ──
                 st.markdown("**主要技术指标**")
+                if not em_ind:
+                    st.info("技术指标数据暂不可用。若部署在 Streamlit Cloud，请确认 Settings → Secrets 中已配置 TUSHARE_TOKEN。")
                 c1, c2, c3, c4 = st.columns(4)
                 kdj = em_ind.get("kdj", {})
                 kdj_status = em_sig.get("kdj", {}).get("status", "--")

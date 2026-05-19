@@ -88,16 +88,24 @@ def analyze_stock_tech(ts_code: str, name: str = "") -> Dict[str, Any]:
             import tushare as ts
             from datetime import datetime, timedelta
             from config import TUSHARE_TOKEN
-            pro = ts.pro_api(TUSHARE_TOKEN)
-            end_date = datetime.now().strftime('%Y%m%d')
-            start_date = (datetime.now() - timedelta(days=180)).strftime('%Y%m%d')
-            df_ts = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
-            if df_ts is not None and not df_ts.empty and len(df_ts) >= 30:
-                df_ts = df_ts.sort_values('trade_date').reset_index(drop=True)
-                df_ts = df_ts.rename(columns={'trade_date': 'date', 'vol': 'volume'})
-                if 'amount' in df_ts.columns:
-                    df_ts['amount'] = df_ts['amount'] * 1000
-                df = df_ts
+            if not TUSHARE_TOKEN:
+                result["error"] = "TUSHARE_TOKEN 未配置，请在 Streamlit Secrets 中设置"
+            else:
+                try:
+                    pro = ts.pro_api(TUSHARE_TOKEN)
+                    end_date = datetime.now().strftime('%Y%m%d')
+                    start_date = (datetime.now() - timedelta(days=180)).strftime('%Y%m%d')
+                    df_ts = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+                    if df_ts is not None and not df_ts.empty and len(df_ts) >= 30:
+                        df_ts = df_ts.sort_values('trade_date').reset_index(drop=True)
+                        df_ts = df_ts.rename(columns={'trade_date': 'date', 'vol': 'volume'})
+                        if 'amount' in df_ts.columns:
+                            df_ts['amount'] = df_ts['amount'] * 1000
+                        df = df_ts
+                    else:
+                        result["error"] = f"Tushare 返回数据为空或不完整({ts_code})，请检查 token 积分权限"
+                except Exception as e:
+                    result["error"] = f"Tushare 数据获取失败: {e}"
 
         if not df.empty and len(df) >= 30:
             kdj = calculate_kdj(df)
