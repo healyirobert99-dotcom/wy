@@ -21,7 +21,10 @@ DAILY_DIR.mkdir(parents=True, exist_ok=True)
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Tushare ──
-TUSHARE_TOKEN = os.environ.get('TUSHARE_TOKEN', '')
+TUSHARE_TOKEN = os.environ.get(
+    'TUSHARE_TOKEN',
+    '869490f6f46b978b30f96d8fd5830ef85a51e5ca7ab6a763ec71f1e3'
+)
 
 # ── 均线参数 ──
 MA_PERIODS = [10, 20, 50, 120, 200]
