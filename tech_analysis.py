@@ -88,24 +88,40 @@ def analyze_stock_tech(ts_code: str, name: str = "") -> Dict[str, Any]:
             import tushare as ts
             from datetime import datetime, timedelta
             from config import TUSHARE_TOKEN
-            if not TUSHARE_TOKEN:
+
+            # 备选读取 token（Streamlit Cloud Secrets 有时通过 st.secrets 更可靠）
+            token = TUSHARE_TOKEN
+            if not token:
+                try:
+                    import streamlit as st
+                    token = st.secrets.get("TUSHARE_TOKEN", "")
+                except Exception:
+                    pass
+
+            print(f"[DEBUG] ts_code={ts_code}, token_available={bool(token)}, df_len={len(df)}")
+
+            if not token:
                 result["error"] = "TUSHARE_TOKEN 未配置，请在 Streamlit Secrets 中设置"
             else:
                 try:
-                    pro = ts.pro_api(TUSHARE_TOKEN)
+                    pro = ts.pro_api(token)
                     end_date = datetime.now().strftime('%Y%m%d')
                     start_date = (datetime.now() - timedelta(days=180)).strftime('%Y%m%d')
+                    print(f"[DEBUG] Calling pro.daily({ts_code}, {start_date}, {end_date})")
                     df_ts = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+                    print(f"[DEBUG] pro.daily returned {len(df_ts) if df_ts is not None else 'None'} rows, cols={list(df_ts.columns) if df_ts is not None else 'N/A'}")
                     if df_ts is not None and not df_ts.empty and len(df_ts) >= 30:
                         df_ts = df_ts.sort_values('trade_date').reset_index(drop=True)
                         df_ts = df_ts.rename(columns={'trade_date': 'date', 'vol': 'volume'})
                         if 'amount' in df_ts.columns:
                             df_ts['amount'] = df_ts['amount'] * 1000
                         df = df_ts
+                        print(f"[DEBUG] Fallback df ready, len={len(df)}")
                     else:
                         result["error"] = f"Tushare 返回数据为空或不完整({ts_code})，请检查 token 积分权限"
                 except Exception as e:
                     result["error"] = f"Tushare 数据获取失败: {e}"
+                    print(f"[DEBUG] Tushare exception: {e}")
 
         if not df.empty and len(df) >= 30:
             kdj = calculate_kdj(df)
